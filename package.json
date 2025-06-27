@@ -1,14 +1,11 @@
 {
-  "name": "documents",
+  "name": "tradingview-scraper",
   "version": "1.0.0",
+  "type": "module",
   "main": "scrape-tradingview.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node scrape-tradingview.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "puppeteer": "^24.11.0"
   }
