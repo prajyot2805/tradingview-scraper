@@ -4,12 +4,12 @@ import { writeFileSync } from 'fs';
 async function run() {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
   const page = await browser.newPage();
   await page.goto('https://in.tradingview.com/markets/stocks-india/market-movers-penny-stocks/', {
-    waitUntil: 'networkidle2',
+    waitUntil: 'networkidle2'
   });
 
   const data = await page.evaluate(() => {
