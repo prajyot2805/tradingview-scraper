@@ -1,46 +1,48 @@
-const puppeteer = require('puppeteer');
-const fs = require('fs');
+import puppeteer from 'puppeteer';
+import { writeFileSync } from 'fs';
 
 async function run() {
   const browser = await puppeteer.launch({
     headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox'
-    ]
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
   const page = await browser.newPage();
-  await page.goto('https://in.tradingview.com/markets/stocks-india/market-movers-penny-stocks/', { waitUntil: 'domcontentloaded' });
-
-  // Example scraping logic (adjust selectors as needed)
-  const data = await page.evaluate(() => {
-    const rows = document.querySelectorAll('.tv-data-table__tbody tr');
-    let result = [];
-
-    rows.forEach(row => {
-      const cells = row.querySelectorAll('td');
-      if (cells.length > 0) {
-        result.push({
-          symbol: cells[0].innerText.trim(),
-          lastPrice: cells[1]?.innerText.trim() || '',
-          changePercent: cells[2]?.innerText.trim() || '',
-          volume: cells[3]?.innerText.trim() || '',
-          relVolume: cells[4]?.innerText.trim() || '',
-          marketCap: cells[5]?.innerText.trim() || '',
-          sector: cells[6]?.innerText.trim() || ''
-        });
-      }
-    });
-
-    return result;
+  await page.goto('https://in.tradingview.com/markets/stocks-india/market-movers-penny-stocks/', {
+    waitUntil: 'networkidle2',
   });
 
-  console.log(data);
+  const data = await page.evaluate(() => {
+    const rows = document.querySelectorAll('table tbody tr');
+    return Array.from(rows).map(row => {
+      const columns = row.querySelectorAll('td');
+      return {
+        symbol: columns[0]?.innerText.trim(),
+        price: columns[1]?.innerText.trim(),
+        changePercent: columns[2]?.innerText.trim(),
+        volume: columns[3]?.innerText.trim(),
+        relVolume: columns[4]?.innerText.trim(),
+        marketCap: columns[5]?.innerText.trim(),
+        pe: columns[6]?.innerText.trim(),
+        eps: columns[7]?.innerText.trim(),
+        epsGrowth: columns[8]?.innerText.trim(),
+        divYield: columns[9]?.innerText.trim(),
+        sector: columns[10]?.innerText.trim(),
+        analystRating: columns[11]?.innerText.trim(),
+        avgVolume10d: columns[12]?.innerText.trim(),
+        high52w: columns[13]?.innerText.trim(),
+        low52w: columns[14]?.innerText.trim(),
+        rsi: columns[15]?.innerText.trim(),
+        macdHistogram: columns[16]?.innerText.trim(),
+        adx: columns[17]?.innerText.trim(),
+        atr: columns[18]?.innerText.trim(),
+      };
+    });
+  });
 
-  fs.writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2));
-
+  writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2), 'utf-8');
+  console.log('✅ Data saved successfully.');
   await browser.close();
 }
 
-run();
+run().catch(console.error);
