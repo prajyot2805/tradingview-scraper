@@ -1,5 +1,5 @@
-const puppeteer = require('puppeteer');
-const fs = require('fs');
+import puppeteer from 'puppeteer';
+import fs from 'fs';
 
 async function run() {
   const browser = await puppeteer.launch({
@@ -22,21 +22,17 @@ async function run() {
     timeout: 120_000
   });
 
-  // Wait for the table to appear
   await page.waitForSelector('table', { timeout: 120_000 });
 
-  // Scroll horizontally to ensure all columns load
   await page.evaluate(() => {
-    const tableContainer = document.querySelector('table').parentElement;
+    const tableContainer = document.querySelector('table')?.parentElement;
     if (tableContainer) {
       tableContainer.scrollLeft = 99999;
     }
   });
 
-  // Wait a bit for any additional columns to appear
   await page.waitForTimeout(3000);
 
-  // Extract all rows
   const data = await page.evaluate(() => {
     const rows = Array.from(document.querySelectorAll('tbody tr'));
     return rows.map(row => {
