@@ -2,18 +2,18 @@ import puppeteer from 'puppeteer';
 import fs from 'fs';
 
 async function run() {
-  // Launch headless browser
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: puppeteer.executablePath(),
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
   const page = await browser.newPage();
 
-  // Login URL if you need cookies, otherwise directly load your screener URL
-  await page.goto('https://in.tradingview.com/screener/MITooXHt/', { waitUntil: 'networkidle0' });
+  await page.goto('https://in.tradingview.com/screener/MITooXHt/', {
+    waitUntil: 'networkidle0'
+  });
 
-  // Scroll to ensure all columns are visible
   await page.evaluate(() => {
     const tableWrapper = document.querySelector('table');
     if (tableWrapper) {
@@ -21,10 +21,8 @@ async function run() {
     }
   });
 
-  // Wait a bit in case rendering lags
   await page.waitForTimeout(3000);
 
-  // Extract data
   const data = await page.evaluate(() => {
     const rows = Array.from(document.querySelectorAll('table tbody tr'));
     return rows.map(row => {
@@ -55,7 +53,6 @@ async function run() {
 
   console.log(data);
 
-  // Save to file
   fs.writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2));
 
   await browser.close();
