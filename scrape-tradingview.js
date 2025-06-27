@@ -1,51 +1,66 @@
-import puppeteer from 'puppeteer';
-import fs from 'fs';
+const puppeteer = require('puppeteer');
+const fs = require('fs');
 
 async function run() {
   const browser = await puppeteer.launch({
-  headless: true,
-  args: ['--no-sandbox', '--disable-setuid-sandbox']
-});
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--window-size=1920,1080'
+    ],
+  });
 
   const page = await browser.newPage();
 
+  // Increase timeout for slow cloud deploys
   await page.goto('https://in.tradingview.com/screener/MITooXHt/', {
-    waitUntil: 'networkidle0'
+    waitUntil: 'networkidle2',
+    timeout: 120_000
   });
 
+  // Wait for the table to appear
+  await page.waitForSelector('table', { timeout: 120_000 });
+
+  // Scroll horizontally to ensure all columns load
   await page.evaluate(() => {
-    const tableWrapper = document.querySelector('table');
-    if (tableWrapper) {
-      tableWrapper.scrollLeft = 10000;
+    const tableContainer = document.querySelector('table').parentElement;
+    if (tableContainer) {
+      tableContainer.scrollLeft = 99999;
     }
   });
 
+  // Wait a bit for any additional columns to appear
   await page.waitForTimeout(3000);
 
+  // Extract all rows
   const data = await page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('table tbody tr'));
+    const rows = Array.from(document.querySelectorAll('tbody tr'));
     return rows.map(row => {
-      const cells = row.querySelectorAll('td');
+      const cells = Array.from(row.querySelectorAll('td')).map(cell => cell.innerText.trim());
       return {
-        symbol: cells[0]?.innerText.trim(),
-        price: cells[1]?.innerText.trim(),
-        changePercent: cells[2]?.innerText.trim(),
-        volume: cells[3]?.innerText.trim(),
-        relVolume: cells[4]?.innerText.trim(),
-        marketCap: cells[5]?.innerText.trim(),
-        pe: cells[6]?.innerText.trim(),
-        eps: cells[7]?.innerText.trim(),
-        epsGrowth: cells[8]?.innerText.trim(),
-        divYield: cells[9]?.innerText.trim(),
-        sector: cells[10]?.innerText.trim(),
-        analystRating: cells[11]?.innerText.trim(),
-        avgVolume10d: cells[12]?.innerText.trim(),
-        high52w: cells[13]?.innerText.trim(),
-        low52w: cells[14]?.innerText.trim(),
-        rsi: cells[15]?.innerText.trim(),
-        macdHistogram: cells[16]?.innerText.trim(),
-        adx: cells[17]?.innerText.trim(),
-        atr: cells[18]?.innerText.trim(),
+        symbol: cells[0] || '',
+        price: cells[1] || '',
+        changePercent: cells[2] || '',
+        volume: cells[3] || '',
+        relVolume: cells[4] || '',
+        marketCap: cells[5] || '',
+        pe: cells[6] || '',
+        eps: cells[7] || '',
+        epsGrowth: cells[8] || '',
+        divYield: cells[9] || '',
+        sector: cells[10] || '',
+        analystRating: cells[11] || '',
+        avgVolume10d: cells[12] || '',
+        high52w: cells[13] || '',
+        low52w: cells[14] || '',
+        rsi: cells[15] || '',
+        macdHistogram: cells[16] || '',
+        adx: cells[17] || '',
+        atr: cells[18] || ''
       };
     });
   });
@@ -53,13 +68,12 @@ async function run() {
   console.log(data);
 
   fs.writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2));
+  console.log('✅ Data saved successfully.');
 
   await browser.close();
 }
 
-run().then(() => {
-  console.log('✅ Data saved successfully.');
-}).catch(e => {
-  console.error(e);
+run().catch(err => {
+  console.error(err);
   process.exit(1);
 });
