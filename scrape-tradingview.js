@@ -1,74 +1,46 @@
-import puppeteer from 'puppeteer';
-import fs from 'fs';
+const puppeteer = require('puppeteer');
+const fs = require('fs');
 
 async function run() {
   const browser = await puppeteer.launch({
     headless: true,
     args: [
       '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--disable-gpu',
-      '--window-size=1920,1080'
+      '--disable-setuid-sandbox'
     ]
   });
 
   const page = await browser.newPage();
+  await page.goto('https://in.tradingview.com/markets/stocks-india/market-movers-penny-stocks/', { waitUntil: 'domcontentloaded' });
 
-  await page.goto('https://in.tradingview.com/screener/MITooXHt/', {
-    waitUntil: 'networkidle2',
-    timeout: 120000
-  });
-
-  await page.waitForSelector('table', { timeout: 120000 });
-
-  await page.evaluate(() => {
-    const tableContainer = document.querySelector('table')?.parentElement;
-    if (tableContainer) {
-      tableContainer.scrollLeft = 99999;
-    }
-  });
-
-  await page.waitForTimeout(3000);
-
+  // Example scraping logic (adjust selectors as needed)
   const data = await page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('tbody tr'));
-    return rows.map(row => {
-      const cells = Array.from(row.querySelectorAll('td')).map(cell => cell.innerText.trim());
-      return {
-        symbol: cells[0] || '',
-        price: cells[1] || '',
-        changePercent: cells[2] || '',
-        volume: cells[3] || '',
-        relVolume: cells[4] || '',
-        marketCap: cells[5] || '',
-        pe: cells[6] || '',
-        eps: cells[7] || '',
-        epsGrowth: cells[8] || '',
-        divYield: cells[9] || '',
-        sector: cells[10] || '',
-        analystRating: cells[11] || '',
-        avgVolume10d: cells[12] || '',
-        high52w: cells[13] || '',
-        low52w: cells[14] || '',
-        rsi: cells[15] || '',
-        macdHistogram: cells[16] || '',
-        adx: cells[17] || '',
-        atr: cells[18] || ''
-      };
+    const rows = document.querySelectorAll('.tv-data-table__tbody tr');
+    let result = [];
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length > 0) {
+        result.push({
+          symbol: cells[0].innerText.trim(),
+          lastPrice: cells[1]?.innerText.trim() || '',
+          changePercent: cells[2]?.innerText.trim() || '',
+          volume: cells[3]?.innerText.trim() || '',
+          relVolume: cells[4]?.innerText.trim() || '',
+          marketCap: cells[5]?.innerText.trim() || '',
+          sector: cells[6]?.innerText.trim() || ''
+        });
+      }
     });
+
+    return result;
   });
 
   console.log(data);
 
   fs.writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2));
-  console.log('✅ Data saved successfully.');
 
   await browser.close();
 }
 
-run().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+run();
