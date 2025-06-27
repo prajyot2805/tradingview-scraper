@@ -11,18 +11,17 @@ async function run() {
       '--disable-accelerated-2d-canvas',
       '--disable-gpu',
       '--window-size=1920,1080'
-    ],
+    ]
   });
 
   const page = await browser.newPage();
 
-  // Increase timeout for slow cloud deploys
   await page.goto('https://in.tradingview.com/screener/MITooXHt/', {
     waitUntil: 'networkidle2',
-    timeout: 120_000
+    timeout: 120000
   });
 
-  await page.waitForSelector('table', { timeout: 120_000 });
+  await page.waitForSelector('table', { timeout: 120000 });
 
   await page.evaluate(() => {
     const tableContainer = document.querySelector('table')?.parentElement;
