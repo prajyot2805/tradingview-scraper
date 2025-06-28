@@ -3,32 +3,34 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
-(async () => {
-  console.log('▶️  Launching local headless Chrome');
+;(async () => {
+  console.log('▶️  Launching headless Chromium…');
 
-  // point at Puppeteer’s downloaded Chromium
+  // Let Puppeteer use its own downloaded Chromium
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: puppeteer.executablePath(),
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
   const page = await browser.newPage();
 
-  // LOAD COOKIES
-  const cookiesPath = path.resolve(__dirname, 'tradingview-cookies.json');
-  if (fs.existsSync(cookiesPath)) {
-    const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
+  // Load cookies if you have them
+  const cookiesFile = path.join(__dirname, 'tradingview-cookies.json');
+  if (fs.existsSync(cookiesFile)) {
+    const cookies = JSON.parse(fs.readFileSync(cookiesFile, 'utf8'));
     await page.setCookie(...cookies);
   }
 
-  // NAVIGATE & WAIT
-  const url = 'https://in.tradingview.com/screener/MITooXHt/';
-  await page.goto(url, { waitUntil: 'networkidle0' });
+  // Go to your private screener
+  await page.goto('https://in.tradingview.com/screener/MITooXHt/', {
+    waitUntil: 'networkidle0'
+  });
   await page.waitForTimeout(10_000);
-  await page.waitForSelector('table.table-Ngq2xrcG tbody tr', { timeout: 60_000 });
+  await page.waitForSelector('table.table-Ngq2xrcG tbody tr', {
+    timeout: 60_000
+  });
 
-  // SCRAPE
+  // Scrape rows
   const data = await page.$$eval(
     'table.table-Ngq2xrcG tbody tr',
     rows => rows.map(row => {
@@ -57,9 +59,9 @@ const path = require('path');
     })
   );
 
-  // WRITE OUT
+  // Save JSON
   fs.writeFileSync(
-    path.resolve(__dirname, 'tradingview_data.json'),
+    path.join(__dirname, 'tradingview_data.json'),
     JSON.stringify(data, null, 2)
   );
   console.log('✅ Data saved successfully.');

@@ -1,11 +1,9 @@
 {
   "name": "tradingview-scraper",
   "version": "1.0.0",
-  "description": "Daily TradingView scraper",
   "type": "commonjs",
   "scripts": {
-    "start": "node scrape-tradingview.cjs",
-    "postinstall": "npx puppeteer install --with-deps"
+    "start": "node scrape-tradingview.cjs"
   },
   "dependencies": {
     "puppeteer": "^24.11.0"
