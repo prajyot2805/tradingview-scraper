@@ -5,7 +5,14 @@ const path = require('path');
 
 (async () => {
   console.log('▶️  Launching local headless Chrome');
-  const browser = await puppeteer.launch({ headless: true });
+
+  // point at Puppeteer’s downloaded Chromium
+  const browser = await puppeteer.launch({
+    headless: true,
+    executablePath: puppeteer.executablePath(),
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
   const page = await browser.newPage();
 
   // LOAD COOKIES
@@ -18,8 +25,8 @@ const path = require('path');
   // NAVIGATE & WAIT
   const url = 'https://in.tradingview.com/screener/MITooXHt/';
   await page.goto(url, { waitUntil: 'networkidle0' });
-  await page.waitForTimeout(10000);
-  await page.waitForSelector('table.table-Ngq2xrcG tbody tr', { timeout: 60000 });
+  await page.waitForTimeout(10_000);
+  await page.waitForSelector('table.table-Ngq2xrcG tbody tr', { timeout: 60_000 });
 
   // SCRAPE
   const data = await page.$$eval(
@@ -51,8 +58,10 @@ const path = require('path');
   );
 
   // WRITE OUT
-  const outPath = path.resolve(__dirname, 'tradingview_data.json');
-  fs.writeFileSync(outPath, JSON.stringify(data, null, 2));
+  fs.writeFileSync(
+    path.resolve(__dirname, 'tradingview_data.json'),
+    JSON.stringify(data, null, 2)
+  );
   console.log('✅ Data saved successfully.');
 
   await browser.close();
