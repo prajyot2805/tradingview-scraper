@@ -1,39 +1,42 @@
 // scrape-tradingview.cjs
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-
-// Debug: confirm Puppeteer version and that Chromium is bundled
-console.log('Launching Puppeteer, version:', puppeteer.version());
-
 (async () => {
-  // Launch the bundled Chromium
-  const browser = await puppeteer.launch({
-    headless: 'new'
-  });
+  // 1. Decide whether to connect or launch
+  const wsEndpoint = process.env.BROWSERLESS_WS_URL; 
+  let browser;
+  if (wsEndpoint) {
+    console.log('▶️  Connecting to Browserless at', wsEndpoint);
+    browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+  } else {
+    console.log('▶️  Launching local headless Chrome');
+    browser = await puppeteer.launch({
+      headless: true,
+      defaultViewport: null
+    });
+  }
 
   const page = await browser.newPage();
 
-  // Load your saved TradingView cookies
-  const cookies = JSON.parse(
-    fs.readFileSync('tradingview-cookies.json', 'utf8')
-  );
-  await page.setCookie(...cookies);
+  // 2. If you use cookies to stay logged in, load them
+  if (fs.existsSync('tradingview-cookies.json')) {
+    const cookies = JSON.parse(fs.readFileSync('tradingview-cookies.json', 'utf8'));
+    await page.setCookie(...cookies);
+    console.log('🍪  Loaded cookies');
+  }
 
-  // Go directly to your private screener
+  // 3. Go to your private screener
   const url = 'https://in.tradingview.com/screener/MITooXHt/';
   await page.goto(url, { waitUntil: 'networkidle0' });
+  console.log('🌐  Page loaded');
 
-  // Give the page a moment to fully render
-  await page.waitForTimeout(10_000);
+  // 4. Wait for the table to appear
+  await page.waitForSelector('.table-Ngq2xrcG', { timeout: 60000 });
+  console.log('✅  Table found, scraping…');
 
-  // Wait for your table to appear
-  await page.waitForSelector('table.table-Ngq2xrcG', { timeout: 60_000 });
-
-  // Scrape the rows into JSON
+  // 5. Scrape rows
   const data = await page.evaluate(() => {
-    const rows = Array.from(
-      document.querySelectorAll('table.table-Ngq2xrcG tbody tr')
-    );
+    const rows = Array.from(document.querySelectorAll('table.table-Ngq2xrcG tbody tr'));
     return rows.map(row => {
       const cells = row.querySelectorAll('td');
       return {
@@ -60,19 +63,11 @@ console.log('Launching Puppeteer, version:', puppeteer.version());
     });
   });
 
-  console.log('📊  Scraped rows:', data.length);
-  console.log(data);
+  // 6. Save to file
+  fs.writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2));
+  console.log('✅  Data saved to tradingview_data.json');
 
-  // Save to file
-  fs.writeFileSync(
-    'tradingview_data.json',
-    JSON.stringify(data, null, 2),
-    'utf8'
-  );
-  console.log('✅  Data saved successfully.');
-
+  // 7. Done
   await browser.close();
-})().catch(err => {
-  console.error('❌  Unhandled error:', err);
-  process.exit(1);
-});
+  console.log('👋  Browser closed');
+})();
