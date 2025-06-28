@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node scrape-tradingview.js"
   },
- "dependencies": {
-  "puppeteer": "^21.3.8"
-}
-
+  "dependencies": {
+    "puppeteer-core": "^24.11.0"
+  }
 }
