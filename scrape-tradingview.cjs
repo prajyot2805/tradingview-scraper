@@ -1,43 +1,30 @@
 // scrape-tradingview.cjs
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-(async () => {
-  // 1. Decide whether to connect or launch
-  const wsEndpoint = process.env.BROWSERLESS_WS_URL; 
-  let browser;
-  if (wsEndpoint) {
-    console.log('▶️  Connecting to Browserless at', wsEndpoint);
-    browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
-  } else {
-    console.log('▶️  Launching local headless Chrome');
-    browser = await puppeteer.launch({
-      headless: true,
-      defaultViewport: null
-    });
-  }
+const path = require('path');
 
+(async () => {
+  console.log('▶️  Launching local headless Chrome');
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
-  // 2. If you use cookies to stay logged in, load them
-  if (fs.existsSync('tradingview-cookies.json')) {
-    const cookies = JSON.parse(fs.readFileSync('tradingview-cookies.json', 'utf8'));
+  // LOAD COOKIES
+  const cookiesPath = path.resolve(__dirname, 'tradingview-cookies.json');
+  if (fs.existsSync(cookiesPath)) {
+    const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
     await page.setCookie(...cookies);
-    console.log('🍪  Loaded cookies');
   }
 
-  // 3. Go to your private screener
+  // NAVIGATE & WAIT
   const url = 'https://in.tradingview.com/screener/MITooXHt/';
   await page.goto(url, { waitUntil: 'networkidle0' });
-  console.log('🌐  Page loaded');
+  await page.waitForTimeout(10000);
+  await page.waitForSelector('table.table-Ngq2xrcG tbody tr', { timeout: 60000 });
 
-  // 4. Wait for the table to appear
-  await page.waitForSelector('.table-Ngq2xrcG', { timeout: 60000 });
-  console.log('✅  Table found, scraping…');
-
-  // 5. Scrape rows
-  const data = await page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('table.table-Ngq2xrcG tbody tr'));
-    return rows.map(row => {
+  // SCRAPE
+  const data = await page.$$eval(
+    'table.table-Ngq2xrcG tbody tr',
+    rows => rows.map(row => {
       const cells = row.querySelectorAll('td');
       return {
         symbol: cells[0]?.innerText.trim(),
@@ -60,14 +47,13 @@ const fs = require('fs');
         adx: cells[18]?.innerText.trim(),
         atr: cells[19]?.innerText.trim(),
       };
-    });
-  });
+    })
+  );
 
-  // 6. Save to file
-  fs.writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2));
-  console.log('✅  Data saved to tradingview_data.json');
+  // WRITE OUT
+  const outPath = path.resolve(__dirname, 'tradingview_data.json');
+  fs.writeFileSync(outPath, JSON.stringify(data, null, 2));
+  console.log('✅ Data saved successfully.');
 
-  // 7. Done
   await browser.close();
-  console.log('👋  Browser closed');
 })();
