@@ -1,12 +1,11 @@
 {
   "name": "tradingview-scraper",
   "version": "1.0.0",
-  "type": "module",
   "main": "scrape-tradingview.js",
   "scripts": {
     "start": "node scrape-tradingview.js"
   },
   "dependencies": {
-    "puppeteer-core": "^24.11.0"
+    "puppeteer": "^21.11.0"
   }
 }
