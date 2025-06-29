@@ -1,32 +1,33 @@
 // scrape-tradingview.cjs
-import fs from 'fs';
-import puppeteer from 'puppeteer';
+const fs = require('fs');
+const puppeteer = require('puppeteer');
 
 (async () => {
-  // figure out which Chrome to launch:
+  // 1. Find a system Chrome binary
   const possible = [
     process.env.CHROME_PATH,
     '/usr/bin/google-chrome-stable',
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
-    puppeteer.executablePath(),      // fallback to bundled
+    puppeteer.executablePath(), // fallback to bundled
   ].filter(Boolean);
 
-  let executablePath = null;
+  let chromePath = null;
   for (const p of possible) {
-    try { fs.accessSync(p); executablePath = p; break; }
+    try { fs.accessSync(p); chromePath = p; break; }
     catch {}
   }
-  if (!executablePath) {
+  if (!chromePath) {
     console.error('❌ No Chrome binary found at any known path:', possible);
     process.exit(1);
   }
+  console.log('▶️  Launching Chrome from:', chromePath);
 
-  console.log('▶️  Launching Chrome from:', executablePath);
+  // 2. Launch Puppeteer
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath,
+    executablePath: chromePath,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -35,16 +36,16 @@ import puppeteer from 'puppeteer';
   });
 
   const page = await browser.newPage();
-  // set your cookies file path if you need to load cookies:
+
+  // 3. Load cookies if you have them
   const cookiesPath = './tradingview-cookies.json';
   if (fs.existsSync(cookiesPath)) {
-    const cookies = JSON.parse(fs.readFileSync(cookiesPath));
+    const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
     await page.setCookie(...cookies);
   }
 
-  await page.goto('https://in.tradingview.com/screener/MITooXHt/', {
-    waitUntil: 'networkidle0'
-  });
+  // 4. Go scrape
+  await page.goto('https://in.tradingview.com/screener/MITooXHt/', { waitUntil: 'networkidle0' });
   await page.waitForSelector('table.table-Ngq2xrcG tbody tr', { timeout: 60000 });
 
   const data = await page.evaluate(() => {
