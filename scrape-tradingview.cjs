@@ -3,31 +3,13 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 
 (async () => {
-  // 1. Find a system Chrome binary
-  const possible = [
-    process.env.CHROME_PATH,
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/google-chrome',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/chromium',
-    puppeteer.executablePath(), // fallback to bundled
-  ].filter(Boolean);
+  // 1️⃣ Show us the Chromium path
+  const chromePath = puppeteer.executablePath();
+  console.log('▶️  Launching bundled Chromium:', chromePath);
 
-  let chromePath = null;
-  for (const p of possible) {
-    try { fs.accessSync(p); chromePath = p; break; }
-    catch {}
-  }
-  if (!chromePath) {
-    console.error('❌ No Chrome binary found at any known path:', possible);
-    process.exit(1);
-  }
-  console.log('▶️  Launching Chrome from:', chromePath);
-
-  // 2. Launch Puppeteer
+  // 2️⃣ Launch headless
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: chromePath,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -37,14 +19,14 @@ const puppeteer = require('puppeteer');
 
   const page = await browser.newPage();
 
-  // 3. Load cookies if you have them
+  // 3️⃣ If you have cookies, load them
   const cookiesPath = './tradingview-cookies.json';
   if (fs.existsSync(cookiesPath)) {
     const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
     await page.setCookie(...cookies);
   }
 
-  // 4. Go scrape
+  // 4️⃣ Go scrape
   await page.goto('https://in.tradingview.com/screener/MITooXHt/', { waitUntil: 'networkidle0' });
   await page.waitForSelector('table.table-Ngq2xrcG tbody tr', { timeout: 60000 });
 
@@ -80,5 +62,6 @@ const puppeteer = require('puppeteer');
 
   fs.writeFileSync('tradingview_data.json', JSON.stringify(data, null, 2));
   console.log('✅ Data saved successfully.');
+
   await browser.close();
 })();
